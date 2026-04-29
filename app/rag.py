@@ -9,9 +9,9 @@ load_dotenv()
 
 CHROMA_PATH = "chroma_db"
 
-# prompt który wysyłamy do LLM
-# {context} = fragmenty z dokumentów które znaleźliśmy
-# {question} = pytanie użytkownika
+#prompt for LLM
+#{context} = chunks of document
+#{question} = user question
 PROMPT_TEMPLATE = """
 You are a helpful assistant. Answer the question based ONLY on the following context.
 If the answer is not in the context, say "I don't know based on the provided documents."
@@ -26,7 +26,6 @@ Answer:
 """
 
 def answer_question(question: str) -> dict:
-    # wczytaj bazę wektorową z dysku
     embeddings = SentenceTransformerEmbeddings(
         model_name="all-MiniLM-L6-v2"
     )
@@ -35,9 +34,9 @@ def answer_question(question: str) -> dict:
         embedding_function=embeddings
     )
 
-    # znajdź 3 najbardziej podobne chunki do pytania
-    # similarity_search porównuje embedding pytania
-    # z embeddingami wszystkich chunków
+    #Find the 3 chunks most similar to the question
+    #similarity_search compares the question's embedding
+    #with the embeddings of all chunks
     results = vectorstore.similarity_search(question, k=3)
 
     if not results:
@@ -46,10 +45,10 @@ def answer_question(question: str) -> dict:
             "sources": []
         }
 
-    # połącz znalezione fragmenty w jeden kontekst
+    #combine the found fragments into a single context
     context = "\n\n".join([doc.page_content for doc in results])
 
-    # lista źródeł (z których stron pochodzi odpowiedź)
+    #list of sources (the websites from which the answer is taken)
     sources = [
         {
             "source": doc.metadata.get("source", "unknown"),
@@ -58,20 +57,19 @@ def answer_question(question: str) -> dict:
         for doc in results
     ]
 
-    # stwórz prompt z kontekstem i pytaniem
+    #create a prompt with context and a question
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
 
-    # połącz z Groq LLM
+    #connect to Groq LLM
     llm = ChatGroq(
         api_key=os.getenv("GROQ_API_KEY"),
         model_name="llama-3.3-70b-versatile",
         temperature=0.0  # niska temperatura = bardziej przewidywalne odpowiedzi
     )
 
-    # chain = prompt → llm
     chain = prompt | llm
 
-    # wywołaj chain z kontekstem i pytaniem
+    #call the chain with the context and the question
     response = chain.invoke({
         "context": context,
         "question": question

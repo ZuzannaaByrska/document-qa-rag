@@ -9,11 +9,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# model danych dla requestu
 class QuestionRequest(BaseModel):
     question: str
 
-# model danych dla response
 class AnswerResponse(BaseModel):
     answer: str
     sources: list
@@ -28,7 +26,6 @@ def health():
 
 @app.post("/ask", response_model=AnswerResponse)
 def ask_question(request: QuestionRequest):
-    # sprawdź czy baza wektorowa istnieje
     if not os.path.exists("chroma_db"):
         raise HTTPException(
             status_code=400,
